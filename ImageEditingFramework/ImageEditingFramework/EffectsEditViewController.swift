@@ -32,6 +32,7 @@ public class EffectsEditViewController: EditViewController, UICollectionViewData
     var collectionView : UICollectionView? = nil
     var activityIndicatorView : UIActivityIndicatorView? = nil
     var settingMainImage : Bool = false
+    var selectedImageIndex : Int = 0
     var _collectionViewData : [EffectInfo]?
     var collectionViewData : [EffectInfo]
     {
@@ -267,13 +268,12 @@ public class EffectsEditViewController: EditViewController, UICollectionViewData
     }
     
     public func collectionView(collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        return collectionViewData.count
+        return collectionViewData.count + 1
     }
     
     public func collectionView(collectionView: UICollectionView, cellForItemAtIndexPath indexPath: NSIndexPath) -> UICollectionViewCell {
         
         var cell : UICollectionViewCell = collectionView.dequeueReusableCellWithReuseIdentifier(cellIdentifier, forIndexPath: indexPath) as UICollectionViewCell;
-        cell.backgroundColor = UIColor(white: 1.0, alpha: 1.0);
         
         //Get the cell's inner views
         var cellImageView : UIImageView = cell.viewWithTag(1) as UIImageView
@@ -282,25 +282,48 @@ public class EffectsEditViewController: EditViewController, UICollectionViewData
         var cellLabel : UILabel = cell.viewWithTag(2) as UILabel
         var cellActivityIndicator : UIActivityIndicatorView = cell.viewWithTag(3) as UIActivityIndicatorView
         
-        //get the object for the row
-        var info : EffectInfo = collectionViewData[indexPath.row]
+        var index = indexPath.row
         
-        //set label text
-        cellLabel.text = info.name
-        
-        //set image
-        if(info.storedImage == nil)
+        //Set cell selected state
+        if(index == self.selectedImageIndex)
         {
-            cellActivityIndicator.startAnimating()
-            self.applyFilters(info.filters, toImage: self.ciImage!, finished: { (image : UIImage?) -> Void in
-                cellActivityIndicator.stopAnimating()
-                info.storedImage = image
-                cellImageView.image = image
-            })
+            cell.backgroundColor = UIColor(white: 0.75, alpha: 0.8);
         }
         else
         {
-            cellImageView.image = info.storedImage
+            cell.backgroundColor = UIColor(white: 1.0, alpha: 1.0);
+        }
+        
+        //Setup cell contents
+        if(index > 0)
+        {
+            //get the object for the row
+            var info : EffectInfo = collectionViewData[index - 1]
+            
+            //set label text
+            cellLabel.text = info.name
+            
+            //set image
+            if(info.storedImage == nil)
+            {
+                cellActivityIndicator.startAnimating()
+                self.applyFilters(info.filters, toImage: self.ciImage!, finished: { (image : UIImage?) -> Void in
+                    cellActivityIndicator.stopAnimating()
+                    info.storedImage = image
+                    cellImageView.image = image
+                })
+            }
+            else
+            {
+                cellImageView.image = info.storedImage
+            }
+        }
+        else
+        {
+            var unchangedImg = ciContext?.createCGImage(self.ciImage!, fromRect: self.ciImage!.extent())
+            var unchangedUiImg = UIImage(CGImage: unchangedImg)
+            cellImageView.image = unchangedUiImg
+            cellLabel.text = "Original"
         }
         
         return cell;
@@ -308,21 +331,36 @@ public class EffectsEditViewController: EditViewController, UICollectionViewData
     
     public func collectionView(collectionView: UICollectionView, didSelectItemAtIndexPath indexPath: NSIndexPath)
     {
-        //get the object for the row
-        var info : EffectInfo = collectionViewData[indexPath.row]
+        var index = indexPath.row
         
-        //set image
-        if(info.storedImage == nil)
+        if(index > 0)
         {
-            self.applyFilters(info.filters, toImage: self.ciImage!, finished: { (image : UIImage?) -> Void in
+            //get the object for the row
+            var info : EffectInfo = collectionViewData[index - 1]
+            
+            //set image
+            if(info.storedImage == nil)
+            {
+                self.applyFilters(info.filters, toImage: self.ciImage!, finished: { (image : UIImage?) -> Void in
+                    self.imageView?.image = info.storedImage
+                    self.image = info.storedImage
+                })
+            }
+            else
+            {
                 self.imageView?.image = info.storedImage
                 self.image = info.storedImage
-            })
+            }
         }
         else
         {
-            self.imageView?.image = info.storedImage
-            self.image = info.storedImage
+            var unchangedImg = ciContext?.createCGImage(self.ciImage!, fromRect: self.ciImage!.extent())
+            var unchangedUiImg = UIImage(CGImage: unchangedImg)
+            self.image = unchangedUiImg
+            self.imageView?.image = unchangedUiImg
         }
+        
+        selectedImageIndex = indexPath.row
+        collectionView.reloadData()
     }
 }
